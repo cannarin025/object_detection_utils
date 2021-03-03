@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import img_resizer
 
 from scipy.interpolate import UnivariateSpline
 
@@ -30,11 +31,17 @@ def rot_270(img):
     return cv2.rotate(img, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
 
 #stretches
-def stretch_x(img):
-    return
+def stretch_x(img, factor):
+    h, w = np.shape(img)[:2]
+    scaled_w = int(w * (1+factor))
+    resized = cv2.resize(img, (scaled_w, h), interpolation=cv2.INTER_AREA)
+    return img_resizer.resize_img(w, h, resized)
 
-def stretch_y(img):
-    return
+def stretch_y(img, factor):
+    h, w = np.shape(img)[:2]
+    scaled_h = int(h * (1+factor))
+    resized = cv2.resize(img, (w, scaled_h), interpolation=cv2.INTER_AREA)
+    return img_resizer.resize_img(w, h, resized)
 
 #warmth
 def spreadLookupTable(x, y):
@@ -114,9 +121,10 @@ def coldImage(image, strength, graph = False):
         print("strength ratio must be a decimal value between 0-1")
 
 #cv2.imshow("test", colour_test(img))
-print(type(img))
-cv2.imshow("cold gabe", coldImage(img, 0.9, graph=True))
-cv2.imshow("hot gabe", warmImage(img, 0.9, graph=True))
+
+cv2.imshow("w              i                   d                 e                                                        g                        a                        b                            e", stretch_y(img, 0.7))
+#cv2.imshow("cold gabe", coldImage(img, 0.9, graph=True))
+#cv2.imshow("hot gabe", warmImage(img, 0.9, graph=True))
 
 cv2.imshow("gabe", flipped)
 cv2.waitKey(0)

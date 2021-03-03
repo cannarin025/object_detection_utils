@@ -1,10 +1,5 @@
-from PIL import Image
 import cv2
 import numpy as np
-import os
-import glob
-
-img = cv2.imread("C://Users//canna//Desktop//Screenshot_2.png")
 
 def resize_img(target_width_px, target_height_px, img):
     print(np.shape(img))
@@ -14,8 +9,9 @@ def resize_img(target_width_px, target_height_px, img):
 
     left = 0
     right = img_width_px
-    bottom = img_height_px
     top = 0
+    bottom = img_height_px
+    
 
     # Determine dimensions of image to ensure same aspect ratio as original
     if img_aspect_ratio < target_aspect_ratio:  # height of original image needs to be reduced
@@ -37,9 +33,14 @@ def resize_img(target_width_px, target_height_px, img):
     bottom = int(img_height_px - diff_y / 2)
     top = int(diff_y / 2)
 
-    cropped = img[top:bottom][left:right]
+    cropped = img[top:bottom, left:right]
 
     # Image and target aspect ratios are now identical. Resize.
     new_size = (target_width_px, target_height_px)
     resized = cv2.resize(cropped, new_size)
     return resized
+
+# img = cv2.imread("C://Users//canna//Desktop//Screenshot_2.png")
+# cv2.imshow("original",img)
+# cv2.imshow("test",resize_img(700,50, img))
+# cv2.waitKey(0)
