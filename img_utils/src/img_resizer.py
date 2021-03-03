@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 
 def resize_img(target_width_px, target_height_px, img):
-    print(np.shape(img))
     img_height_px, img_width_px = np.shape(img)[:2]
     img_aspect_ratio = img_width_px / img_height_px
     target_aspect_ratio = target_width_px / target_height_px

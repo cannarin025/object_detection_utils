@@ -122,7 +122,7 @@ def coldImage(image, strength, graph = False):
 
 #cv2.imshow("test", colour_test(img))
 
-cv2.imshow("w              i                   d                 e                                                        g                        a                        b                            e", stretch_y(img, 0.7))
+cv2.imshow("w              i                   d                 e                                                        g                        a                        b                            e", stretch_x(img, 3))
 #cv2.imshow("cold gabe", coldImage(img, 0.9, graph=True))
 #cv2.imshow("hot gabe", warmImage(img, 0.9, graph=True))
 
