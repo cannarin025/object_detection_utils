@@ -1,8 +1,7 @@
-from os import stat_result
+import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.lib.type_check import imag
 
 from scipy.interpolate import UnivariateSpline
 
@@ -30,17 +29,24 @@ def rot_180(img):
 def rot_270(img):
     return cv2.rotate(img, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
 
+#stretches
+def stretch_x(img):
+    return
+
+def stretch_y(img):
+    return
+
 #warmth
 def spreadLookupTable(x, y):
   spline = UnivariateSpline(x, y)
   return spline(range(256))
   
 def warmImage(image, strength, graph = False):
-    if strength > 0 and abs(strength) <= 1:
-        increase_x_points = [0, 64, 128, 255]
-        increase_y_points = [0, 64 * (1+strength), 128 * (1+strength), 255]
-        decrease_x_points = [0, 64, 128, 255]
-        decrease_y_points = [0, 64 * (1-strength), 128 * (1-strength), 255]
+    if strength >= 0 and abs(strength) <= 1:
+        increase_x_points = [0, 64, 128, 192, 224, 255]
+        increase_y_points = [0, 64 * (1+strength), 128 * (1+0.75*strength), 192*(1+0.3*strength),224*(1+0.135*strength), 255]
+        decrease_x_points = [0, 64, 128, 192, 224, 255]
+        decrease_y_points = [0, 64 * (1-0.9*strength), 128 * (1-0.75*strength), 192*(1-0.3*strength),224*(1-0.135*strength), 255]
 
         increaseLookupTable = spreadLookupTable(increase_x_points, increase_y_points)
         decreaseLookupTable = spreadLookupTable(decrease_x_points, decrease_y_points)
@@ -72,11 +78,11 @@ def warmImage(image, strength, graph = False):
         print("strength ratio must be a decimal value between 0-1")
 
 def coldImage(image, strength, graph = False):
-    if strength > 0 and abs(strength) <= 1:
-        increase_x_points = [0, 64, 128, 255]
-        increase_y_points = [0, 64 * (1+strength), 128 * (1+strength), 255]
-        decrease_x_points = [0, 64, 128, 255]
-        decrease_y_points = [0, 64 * (1-strength), 128 * (1-strength), 255]
+    if strength >= 0 and abs(strength) <= 1:
+        increase_x_points = [0, 64, 128, 192, 224, 255]
+        increase_y_points = [0, 64 * (1+strength), 128 * (1+0.75*strength), 192*(1+0.3*strength),224*(1+0.135*strength), 255]
+        decrease_x_points = [0, 64, 128, 192, 224, 255]
+        decrease_y_points = [0, 64 * (1-0.9*strength), 128 * (1-0.75*strength), 192*(1-0.3*strength),224*(1-0.135*strength), 255]
 
         increaseLookupTable = spreadLookupTable(increase_x_points, increase_y_points)
         decreaseLookupTable = spreadLookupTable(decrease_x_points, decrease_y_points)
@@ -108,8 +114,9 @@ def coldImage(image, strength, graph = False):
         print("strength ratio must be a decimal value between 0-1")
 
 #cv2.imshow("test", colour_test(img))
-cv2.imshow("cold gabe", coldImage(img, 0.30, graph=True))
-cv2.imshow("hot gabe", warmImage(img, 0.30, graph=True))
+print(type(img))
+cv2.imshow("cold gabe", coldImage(img, 0.9, graph=True))
+cv2.imshow("hot gabe", warmImage(img, 0.9, graph=True))
 
 cv2.imshow("gabe", flipped)
 cv2.waitKey(0)
