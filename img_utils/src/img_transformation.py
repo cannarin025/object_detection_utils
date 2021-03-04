@@ -1,8 +1,10 @@
 import os
+from typing import Tuple
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import img_resizer
+from util import get_substring
 
 from scipy.interpolate import UnivariateSpline
 
@@ -14,34 +16,78 @@ rotated = cv2.rotate(img, rotateCode=cv2.ROTATE_90_CLOCKWISE)
 flipped = cv2.flip(img, 1)
 
 #reflections
-def reflect_x(img):
+def reflect_x(img, label_path = None):
+    if label_path is not None:
+        point1 = (get_substring())
+        pass
+
     return cv2.flip(img, 1)
 
-def reflect_y(img):
+def reflect_y(img, label_path = None):
+    if label_path is not None:
+        pass
+
     return cv2.flip(img, 0)
 
 #clockwise rotations
-def rot_90(img):
+def rot_90(img, label_path = None):
+    if label_path is not None:
+        pass
+
     return cv2.rotate(img, rotateCode=cv2.ROTATE_90_CLOCKWISE)
 
-def rot_180(img):
+def rot_180(img, label_path = None):
+    if label_path is not None:
+        pass
+
     return cv2.rotate(img, rotateCode=cv2.ROTATE_180)
 
-def rot_270(img):
+def rot_270(img, label_path = None):
+    if label_path is not None:
+        pass
+
     return cv2.rotate(img, rotateCode=cv2.ROTATE_90_COUNTERCLOCKWISE)
 
 #stretches
-def stretch_x(img, factor):
+def stretch_x(img, factor, label_path = None):
+    if label_path is not None:
+        pass
+
     h, w = np.shape(img)[:2]
     scaled_w = int(w * (1+factor))
     resized = cv2.resize(img, (scaled_w, h), interpolation=cv2.INTER_AREA)
     return img_resizer.resize_img(w, h, resized)
 
-def stretch_y(img, factor):
+def stretch_y(img, factor, label_path = None):
+    if label_path is not None:
+        pass
+
     h, w = np.shape(img)[:2]
     scaled_h = int(h * (1+factor))
     resized = cv2.resize(img, (w, scaled_h), interpolation=cv2.INTER_AREA)
     return img_resizer.resize_img(w, h, resized)
+
+#label manipulation
+def reflect_x_label(label_path):
+    pass
+
+def reflect_y_label(label_path):
+    pass
+
+def rot_90_label(label_path):
+    pass
+
+def rot_180_label(label_path):
+    pass
+
+def rot_270_label(label_path):
+    pass
+
+def stretch_x_label(label_path, factor):
+    pass
+
+def stretch_y_label(label_path, factor):
+    pass
 
 #warmth
 def spreadLookupTable(x, y):

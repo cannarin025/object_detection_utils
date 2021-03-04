@@ -1,0 +1,1 @@
+Please label images in the Pascal Voc label format for use with this repo. This repo can then transform these labels into YOLO format afterwards.

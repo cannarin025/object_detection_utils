@@ -1,4 +1,4 @@
-from resize_img.src import img_resizer
+from src import img_resizer
 from argparse import ArgumentParser
 import glob
 import cv2
