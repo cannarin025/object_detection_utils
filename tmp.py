@@ -1,12 +1,12 @@
 import os
-from sys import path
 from typing import Tuple
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-import random
 from scipy.interpolate import UnivariateSpline
+import glob
+import random
 from bs4 import BeautifulSoup
 import re
 
@@ -20,6 +20,7 @@ class Labelled_Img:
         self._img_path = img_path
         self._label_path = label_path
         self._img = cv2.imread(img_path)
+        self._origimg = cv2.imread(img_path)
         self._labels = None
 
         if label_path is not None:
@@ -36,6 +37,8 @@ class Labelled_Img:
                 y_max = int(object.find("ymax").string)
 
                 self._labels.append([name, (x_min, y_min), (x_max, y_max)])
+        
+        self._origlabels = self._labels.copy()
 
     # getter methods
     def show(self, show_labels = True):
@@ -46,7 +49,7 @@ class Labelled_Img:
         else:
             labelled_img = copy.copy(self._img)
             for label in self._labels:
-                labelled_img = cv2.rectangle(labelled_img, label[1], label[2], thickness=2, color=(255,0,0))
+                labelled_img = cv2.rectangle(labelled_img, label[1], label[2], thickness=2, color=(0,0,255))
             
             cv2.imshow("labelled", labelled_img)
             cv2.waitKey(0)
@@ -59,8 +62,12 @@ class Labelled_Img:
 
     def get_transformations(self):
         return self._transformations
-
     
+    def reset(self):
+        self._img = self._origimg
+        self._labels = self._origlabels
+        self._transformations = []
+
 
     # image resizer
     def resize_img(self, target_width_px, target_height_px, resize_labels = True, transformation = True):
@@ -70,7 +77,7 @@ class Labelled_Img:
         if self._labels is None:
             resize_labels = False  # will not resize label if label does not exist
 
-        img_height_px, img_width_px = np.shape(self._img)[:2]  # [:2] is to disregard colour channels dimension to only get dimensions of image
+        img_height_px, img_width_px = np.shape(self._img)[:2]
         img_aspect_ratio = img_width_px / img_height_px
         target_aspect_ratio = target_width_px / target_height_px
 
@@ -114,7 +121,7 @@ class Labelled_Img:
             x_factor = target_width_px / (right - left)
             y_factor = target_height_px / (bottom - top)
 
-            headroom = 0  # headroom set to 0 as it causes issues for images on border
+            headroom = 0
             x_max = label_max_x + headroom
             y_max = label_max_y + headroom
 
@@ -168,7 +175,6 @@ class Labelled_Img:
         # Image and target aspect ratios are now identical. Resize.
         new_size = (target_width_px, target_height_px)
         self._img = cv2.resize(cropped, new_size)
-        return self
 
 
 
@@ -294,7 +300,13 @@ class Labelled_Img:
         stretch[axis] = coord[axis] * factor
         return (int(stretch[0]), int(stretch[1]))
 
-    def stretch_x(self, factor):
+    def stretch_x(self, factor = None):
+        if factor == None:
+            factor = np.random.normal(1,0.2)
+            while np.abs(factor) < 0.05:
+                factor = np.random.normal(1,0.2)
+        factor = np.abs(factor)
+        
         self._transformations.append(f"stretchX-{round(factor, 3)}")
         img_y, img_x = np.shape(self._img)[:2]
         midpoint = (img_x / 2, img_y / 2)
@@ -314,7 +326,13 @@ class Labelled_Img:
             self.resize_img(img_x, img_y, resize_labels=False, transformation=False)
         return self
 
-    def stretch_y(self, factor):
+    def stretch_y(self, factor = None):
+        if factor == None:
+            factor = np.random.normal(1,0.2)
+            while np.abs(factor) < 0.05:
+                factor = np.random.normal(1,0.2)
+        factor = np.abs(factor)
+        
         self._transformations.append(f"stretchY-{round(factor, 3)}")
         img_y, img_x = np.shape(self._img)[:2]
         midpoint = (img_x / 2, img_y / 2)
@@ -333,13 +351,17 @@ class Labelled_Img:
         else:
             self.resize_img(img_x, img_y, resize_labels=False, transformation=False)
         return self
-
+    
+    
     # colour effects
     def __spreadLookupTable(self, x, y):
         spline = UnivariateSpline(x, y)
         return spline(range(256))
   
-    def warm_image(self, strength, graph = False):
+    def warm_image(self, strength = None, graph = False):
+        if strength == None:
+            strength = np.random.rand()
+        
         if strength >= 0 and abs(strength) <= 1:
             self._transformations.append(f"warm-{round(strength, 3)}")
             increase_x_points = [0, 64, 128, 192, 224, 255]
@@ -373,11 +395,13 @@ class Labelled_Img:
                 plt.show()
 
             self._img = cv2.merge((blue_channel, green_channel, red_channel)) 
+            return self
         else:
             print("strength ratio must be a decimal value between 0-1")
-        return self
 
-    def cool_image(self, strength, graph = False):
+    def cool_image(self, strength = None, graph = False):
+        if strength == None:
+            strength = np.random.rand()
         if strength >= 0 and abs(strength) <= 1:
             self._transformations.append(f"cool-{round(strength, 3)}")
             increase_x_points = [0, 64, 128, 192, 224, 255]
@@ -411,19 +435,11 @@ class Labelled_Img:
                 plt.show()
     
             self._img = cv2.merge((blue_channel, green_channel, red_channel))  
+            return self
         else:
             print("strength ratio must be a decimal value between 0-1")
-        return self
-
-    def greyscale(self):
-        self._transformations.append("greyscale")
-        self._img = cv2.cvtColor(self._img, cv2.COLOR_BGR2GRAY)
-        return self
-
-
-    
-    #overlays
-    def rand_overlay(self, overlay_path = None):
+            
+    def rand_overlay(self, graph = False):
         overlays = os.listdir('Overlays')
         overlay_imgpath = os.path.join('Overlays',overlays[np.random.randint(0,len(overlays))])
         overlay_img = cv2.imread(overlay_imgpath)
@@ -439,24 +455,126 @@ class Labelled_Img:
         Q = 1-P
         self._img = cv2.addWeighted(self._img,P,overlay_crop,Q,0)
         return self
-
-
-
-    #random method
-    def random_transform(self):
-        if random.randint(0, 100) > 30:
+        
+    def rand_trans(self,transforms = None, probs = None):#,self.rot_90,self.rot_270,self.stretch_y,self.stretch_x]):
+        
+        if transforms == None:
+            transforms = [self.rand_overlay,self.cool_image,self.warm_image,self.rot_180,self.reflect_x,self.reflect_y,self.stretch_y,self.stretch_x]#,self.rot_90,self.rot_270]
+        if probs == None:
+            # probs = [0.28,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08]
+            probs = [0.3,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+        
+        transformtype = np.random.choice(a=transforms,p=probs)
+        transformtype()
+        return self
+    
+    def rand_colour(self):
+        
+        if np.random.rand() >= 0.5:
+            self.cool_image()
+        else:
+            self.warm_image()
+        return self
+    
+    def rand_rot(self):
+        rotchoice = np.random.rand()
+        refchoice = np.random.rand()
+        if rotchoice >= 0.75:
+            self.rot_180()
+        elif rotchoice >= 0.5:
+            # self.rot_90()
+            None
+        elif rotchoice >= 0.25:
+            # self.rot_270()
+            None
+            
+        if refchoice >= 0.7:
             self.reflect_x()
+        elif refchoice >= 0.4:
+            self.reflect_y()
+        else:
+            None
+        return self
+    
+    def rand_scale(self):
+        if np.random.rand() >= 0.5:
+            self.stretch_x()
+        else:
+            self.stretch_y()
+        return self
+        
+#%% 
+   
+def show_labelled(outputs):
+        labelled_imgs = []
+        for img in outputs:
+            
+            labelled_img = copy.copy(img._img)
+            for label in img._labels:
+                labelled_img = cv2.rectangle(labelled_img, label[1], label[2], thickness=2, color=(0,0,255))
+                labelled_imgs.append(labelled_img)
+        concat = cv2.hconcat(labelled_imgs)
+        cv2.imshow('output',concat)
+    
+def rand_chain(img_path,label_path,num_outputs = 6, num_passes = 1, show = False, debug = False):
+        
+    orig = Labelled_Img(img_path,label_path)
+    outputs = [orig]
+    
+    # overlayed = False
+    
+    for output in range(num_outputs):
+        image = Labelled_Img(img_path,label_path)
+        # num_passes = np.abs(int(np.random.normal(num_transforms,0.5)))
+        transformtypes = [image.rand_rot,image.rand_colour,image.rand_overlay,image.rand_scale]
+        random.shuffle(transformtypes)
 
-        if random.randint(0, 100) > 30:
-            self.rot_90()
+        for transform in range(num_passes):
+            transformtypes[0]()
+            transformtypes[1]()
+            transformtypes[2]()
+            transformtypes[3]()
+        if debug:
+            print(image._transformations,'\n')
+            
+        outputs.append(image) # save image
+        
+        if show:
+            # for i in range(len(outputs)):
+                # cv2.imshow('window{}'.format(i),outputs[i]._img)
+            show_labelled(outputs)
 
-        if random.randint(0, 100) > 30:
-            self.warm_image(random.randint(0, 100)/100)
+    return outputs
+        
+        
+def rand_folder(folder_path = None,file_type = '.jpg', num_outputs = 6, num_passes = 1, debug = False):
+    '''This is a supervised randomisation process which waits for confirmation'''
+    if folder_path is not None:
+        # print(folder_path + '/*' + file_type)
+        file_paths = folder_path + '/*' + file_type
+        print('Starting. Filepath:\n')
+        print(file_paths+'\n')        
+        
+        for file_name in glob.glob(file_paths):
+            print(file_name+'\n')
+            xml_path = file_name[:-len(file_type)] + '.xml'
+            confirmed = False
+            while not confirmed:
+                
+                img_set = rand_chain(file_name, xml_path, num_outputs = num_outputs, num_passes = num_passes,debug = debug)
+                
+                show_labelled(img_set)
+                if cv2.waitKey(0) & 0xFF == ord('y'):
+                    confirmed = True
+                elif cv2.waitKey(0) & 0xFF == ord('n'):
+                    None
+                elif cv2.waitKey(0) & 0xFF == ord('m'):
+                    None
+                    
 
 
-
-    #output methods
-    def save(self, custom_name = None, savedir = None):
+ #output methods
+def save(self, custom_name = None, savedir = None):
         """
         Please pass in custom_name without an extension
         """
@@ -511,3 +629,8 @@ class Labelled_Img:
                 fp.write(re.sub(r".*\n", "", self._soup.prettify(), 1))
                 fp.seek(0,2)
                 fp.write("\n" + f"<!--{transform_string[1:]}-->")
+            
+                
+        
+        
+        
