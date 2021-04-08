@@ -6,10 +6,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import random
+from numpy.lib.function_base import append
 from scipy.interpolate import UnivariateSpline
 from bs4 import BeautifulSoup
 import re
 
+class Label:
+    def __init__(self, class_name: str, min_coords: tuple, max_coords: tuple) -> None:
+        self.class_name = class_name
+        self.bbox = (min_coords, max_coords)
+
+        
 class Labelled_Img:
     """
     A class that reads in an image and its label in pascal voc format, applies various transformations and saves a new transformed image/labels in pascal voc or YOLO formet.
@@ -35,7 +42,8 @@ class Labelled_Img:
                 x_max = int(object.find("xmax").string)
                 y_max = int(object.find("ymax").string)
 
-                self._labels.append([name, (x_min, y_min), (x_max, y_max)])
+                #self._labels.append([name, (x_min, y_min), (x_max, y_max)])
+                self._labels.append(Label(name, (x_min, y_min), (x_max, y_max)))
 
     # getter methods
     def show(self, show_labels = True):
@@ -46,7 +54,7 @@ class Labelled_Img:
         else:
             labelled_img = copy.copy(self._img)
             for label in self._labels:
-                labelled_img = cv2.rectangle(labelled_img, label[1], label[2], thickness=2, color=(255,0,0))
+                labelled_img = cv2.rectangle(labelled_img, label.bbox[0], label.bbox[1], thickness=2, color=(255,0,0))
             
             cv2.imshow("labelled", labelled_img)
             cv2.waitKey(0)
@@ -99,17 +107,17 @@ class Labelled_Img:
             label_min_y = img_height_px
 
             for label in self._labels:
-                if label[2][0] > label_max_x:
-                    label_max_x = label[2][0]
+                if label.bbox[1][0] > label_max_x:
+                    label_max_x = label.bbox[1][0]
                 
-                if label[1][0] < label_min_x:
-                    label_min_x = label[1][0]
+                if label.bbox[0][0] < label_min_x:
+                    label_min_x = label.bbox[0][0]
 
-                if label[2][1] > label_max_y:
-                    label_max_y = label[2][1]
+                if label.bbox[1][1] > label_max_y:
+                    label_max_y = label.bbox[1][1]
                 
-                if label[1][1] < label_min_y:
-                    label_min_y = label[1][1]
+                if label.bbox[0][1] < label_min_y:
+                    label_min_y = label.bbox[0][1]
 
             x_factor = target_width_px / (right - left)
             y_factor = target_height_px / (bottom - top)
@@ -136,24 +144,24 @@ class Labelled_Img:
 
 
             for label in self._labels:
-                if discard_small:
-                    orig_x1 = label[1][0]
-                    orig_x2 = label[2][0]
-                    orig_y1 = label[1][1]
-                    orig_y2 = label[2][1]
+                if discard_small:  # discards label if area of transformed bbox is less than discard_threshold * original bbox area
+                    orig_x1 = label.bbox[0][0]
+                    orig_x2 = label.bbox[1][0]
+                    orig_y1 = label.bbox[0][1]
+                    orig_y2 = label.bbox[1][1]
 
-                if label[1][0] > left:
-                    label_x1 = label[1][0] - left
+                if label.bbox[0][0] > left:
+                    label_x1 = label.bbox[0][0] - left
                 else: 
                     label_x1 = 0
                 
-                if label[1][1] > top:
-                    label_y1 = label[1][1] - top
+                if label.bbox[0][1] > top:
+                    label_y1 = label.bbox[0][1] - top
                 else:
                     label_y1 = 0
 
-                label_x2 = label[2][0] - left
-                label_y2 = label[2][1] - top
+                label_x2 = label.bbox[1][0] - left
+                label_y2 = label.bbox[1][1] - top
                 
                 valid_label = all([True if item >= 0 else False for item in [label_x1, label_x2, label_y1, label_y2]])
                 
@@ -171,10 +179,10 @@ class Labelled_Img:
                         if trans_label_area <= discard_threshold * orig_label_area:
                             pass
                         else:
-                            resized_labels.append([label[0], (label_x1, label_y1), (label_x2, label_y2)])
+                            resized_labels.append(Label(class_name = label.class_name, min_coords = (label_x1, label_y1), max_coords = (label_x2, label_y2)))
                     
                     else:
-                        resized_labels.append([label[0], (label_x1, label_y1), (label_x2, label_y2)])
+                        resized_labels.append(Label(class_name = label.class_name, min_coords = (label_x1, label_y1), max_coords = (label_x2, label_y2)))
 
             self._labels = resized_labels
         
@@ -204,13 +212,13 @@ class Labelled_Img:
             reflected = []
             img_y, img_x = np.shape(self._img)[:2]
             for label in self._labels:
-                name = label[0]
-                x_max = img_x - label[1][0]
-                x_min = img_x - label[2][0]
-                y_max = label[2][1]
-                y_min = label[1][1]
+                name = label.class_name
+                x_max = img_x - label.bbox[0][0] 
+                x_min = img_x - label.bbox[1][0]
+                y_max = label.bbox[1][1]
+                y_min = label.bbox[0][1]
 
-                reflected.append([name, (x_min, y_min), (x_max, y_max)])
+                reflected.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
             self._labels = reflected
         return self
 
@@ -224,13 +232,13 @@ class Labelled_Img:
             reflected = []
             img_y, img_x = np.shape(self._img)[:2]
             for label in self._labels:
-                name = label[0]
-                x_max = label[2][0]
-                x_min = label[1][0]
-                y_max = img_y - label[1][1]
-                y_min = img_y - label[2][1]
+                name = label.class_name 
+                x_max = label.bbox[1][0]
+                x_min = label.bbox[0][0]
+                y_max = img_y - label.bbox[0][1]
+                y_min = img_y - label.bbox[1][1]
 
-                reflected.append([name, (x_min, y_min), (x_max, y_max)])
+                reflected.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
             self._labels = reflected
         return self
 
@@ -245,13 +253,13 @@ class Labelled_Img:
             rotated = []
 
             for label in self._labels:
-                name = label[0]
-                x_min = img_x - label[2][1]
-                x_max = img_x - label[1][1]
-                y_max = label[2][0]
-                y_min = label[1][0]
+                name = label.class_name
+                x_min = img_x - label.bbox[1][1]
+                x_max = img_x - label.bbox[0][1]
+                y_max = label.bbox[1][0]
+                y_min = label.bbox[0][0]
 
-                rotated.append([name, (x_min, y_min), (x_max, y_max)])
+                rotated.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
             self._labels = rotated
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -268,13 +276,13 @@ class Labelled_Img:
         if self._labels is not None:
             rotated = []
             for label in self._labels:
-                name = label[0]
-                x_min = img_x - label[2][0]
-                x_max = img_x - label[1][0]
-                y_max = img_y - label[1][1]
-                y_min = img_y - label[2][1]
+                name = label.class_name 
+                x_min = img_x - label.bbox[1][0]
+                x_max = img_x - label.bbox[0][0]
+                y_max = img_y - label.bbox[0][1]
+                y_min = img_y - label.bbox[1][1]
 
-                rotated.append([name, (x_min, y_min), (x_max, y_max)])
+                rotated.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
             self._labels = rotated
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -291,13 +299,13 @@ class Labelled_Img:
         if self._labels is not None:
             rotated = []
             for label in self._labels:
-                name = label[0]
-                x_min = label[1][1]
-                x_max = label[2][1]
-                y_max = img_y - label[1][0]
-                y_min = img_y - label[2][0]
+                name = label.class_name
+                x_min = label.bbox[0][1]
+                x_max = label.bbox[1][1]
+                y_max = img_y - label.bbox[0][0]
+                y_min = img_y - label.bbox[1][0]
 
-                rotated.append([name, (x_min, y_min), (x_max, y_max)])
+                rotated.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
             self._labels = rotated
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -326,9 +334,11 @@ class Labelled_Img:
         if self._labels is not None:
             stretched = []
             for label in self._labels:
-                name = label[0]
-                stretched.append([name, self.__stretch_coordinate(label[1], midpoint, factor, axis = 0),
-                                 self.__stretch_coordinate(label[2], midpoint, factor, axis = 0)])
+                name = label.class_name
+                stretched.append(Label(class_name = name, 
+                                        min_coords = self.__stretch_coordinate(label.bbox[0], midpoint, factor, axis = 0), 
+                                        max_coords = self.__stretch_coordinate(label.bbox[1], midpoint, factor, axis = 0)))
+
             self._labels = stretched
             self.resize_img(img_x, img_y, transformation=False)
 
@@ -346,9 +356,11 @@ class Labelled_Img:
         if self._labels is not None:
             stretched = []
             for label in self._labels:
-                name = label[0]
-                stretched.append([name, self.__stretch_coordinate(label[1], midpoint, factor, axis = 1),
-                                 self.__stretch_coordinate(label[2], midpoint, factor, axis = 1)])
+                name = label.class_name
+                stretched.append(Label(class_name = name, 
+                                        min_coords = self.__stretch_coordinate(label.bbox[0], midpoint, factor, axis = 1),
+                                        max_coords = self.__stretch_coordinate(label.bbox[1], midpoint, factor, axis = 1)))
+
             self._labels = stretched
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -519,11 +531,11 @@ class Labelled_Img:
             objects = self._soup.findAll("object")
             #setting object tags
             for i, label in enumerate(self._labels):
-                objects[i].find("name").string = label[0]
-                objects[i].find("xmin").string = str(label[1][0])
-                objects[i].find("ymin").string = str(label[1][1])
-                objects[i].find("xmax").string = str(label[2][0])
-                objects[i].find("ymax").string = str(label[2][1])
+                objects[i].find("name").string = label.class_name
+                objects[i].find("xmin").string = str(label.bbox[0][0])
+                objects[i].find("ymin").string = str(label.bbox[0][1])
+                objects[i].find("xmax").string = str(label.bbox[1][0])
+                objects[i].find("ymax").string = str(label.bbox[1][1])
 
             for j, object in enumerate(objects):
                 if j > i:
