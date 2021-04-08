@@ -63,7 +63,7 @@ class Labelled_Img:
     
 
     # image resizer
-    def resize_img(self, target_width_px, target_height_px, resize_labels = True, transformation = True):
+    def resize_img(self, target_width_px, target_height_px, resize_labels = True, transformation = True, discard_small = True, discard_threshold = 0.5):
         if transformation:
             self._transformations.append("resized")
 
@@ -136,6 +136,12 @@ class Labelled_Img:
 
 
             for label in self._labels:
+                if discard_small:
+                    orig_x1 = label[1][0]
+                    orig_x2 = label[2][0]
+                    orig_y1 = label[1][1]
+                    orig_y2 = label[2][1]
+
                 if label[1][0] > left:
                     label_x1 = label[1][0] - left
                 else: 
@@ -152,7 +158,23 @@ class Labelled_Img:
                 valid_label = all([True if item >= 0 else False for item in [label_x1, label_x2, label_y1, label_y2]])
                 
                 if valid_label:
-                    resized_labels.append([label[0], (int(label_x1 * x_factor), int(label_y1 * y_factor)), (int(label_x2 * x_factor), int(label_y2 * y_factor))])
+                    label_x1 = int(label_x1 * x_factor)
+                    label_y1 = int(label_y1 * y_factor)
+                    label_x2 = int(label_x2 * x_factor)
+                    label_y2 = int(label_y2 * y_factor)
+
+                    if discard_small:
+                        orig_area = img_height_px * img_width_px
+                        resized_area = target_height_px * target_width_px
+                        orig_label_area = (orig_x2 - orig_x1) * (orig_y2 - orig_y1) / orig_area
+                        trans_label_area = (label_x2 - label_x1) * (label_y2 - label_y1) / resized_area
+                        if trans_label_area <= discard_threshold * orig_label_area:
+                            pass
+                        else:
+                            resized_labels.append([label[0], (label_x1, label_y1), (label_x2, label_y2)])
+                    
+                    else:
+                        resized_labels.append([label[0], (label_x1, label_y1), (label_x2, label_y2)])
 
             self._labels = resized_labels
         

@@ -1,10 +1,13 @@
 from os import terminal_size
+from re import A
 from numpy.lib.type_check import imag
 from labelled_img import Labelled_Img
+import util
 import numpy as np
 
-img_path = "L://Code//labelled_img_test//13_19_000026_FLIR__v1.jpg"
-label_path = "L://Code//labelled_img_test//13_19_000026_FLIR__v1.xml"
+dir_path = "L://Code//IR_imgs//IR_imgs_labelled_(untransformed)//Pigeon"
+img_path = "L://Code//IR_imgs//IR_imgs_labelled_(untransformed)//Pigeon//16_36_000054_FLIR.jpg"
+label_path = "L://Code//IR_imgs//IR_imgs_labelled_(untransformed)//Pigeon//16_36_000054_FLIR.xml"
 
 image = Labelled_Img(img_path, label_path)
 image.show()
@@ -21,12 +24,12 @@ print(np.shape(image.get_img())[:2])
 # image.show()
 
 #issue here as resize after rotate so applies 10px border thing 
-#image.rot_180()
-image.stretch_x(1.3)
+image.rot_180()
+image.stretch_x(1.5)
 image.show()
 
 #image.show()
 #image.save(savedir = "L://Code//labelled_img_test", custom_name = "size_test")
 #image.save()
-print(np.shape(image.get_img())[:2])
+#print(np.shape(image.get_img())[:2])
 print(image.get_transformations())
