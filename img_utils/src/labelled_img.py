@@ -1,6 +1,7 @@
 import os
 from sys import path
 from typing import Tuple
+from util import *
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,7 +37,7 @@ class Labelled_Img:
 
             self._soup = BeautifulSoup(label_xml, "xml")
             for object in self._soup.findAll("object"):
-                name = object.find("name").string
+                name = object.find("name").string.strip()  # strips newline chars and spaces from start and end of names
                 x_min = int(object.find("xmin").string)
                 y_min = int(object.find("ymin").string)
                 x_max = int(object.find("xmax").string)
