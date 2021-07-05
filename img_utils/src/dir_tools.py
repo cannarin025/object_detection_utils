@@ -99,14 +99,43 @@ def count_objects(dirpath, label_format = "pascal_voc", class_file_path = None):
                         label_txt = fp.read().strip()
                     label_indices = re.findall(r"^[0-9]+|\n[0-9]+", label_txt)
                     label_indices = [x.strip() for x in label_indices]
+                    if label_indices == []:
+                        label_indices.append(None)
                     
                     for index in label_indices:
-                        index = int(index)
-                        if classes[index] in class_count.keys():
-                            class_count[classes[index]] += 1
+                        if index is None:
+                            if "None" in class_count.keys():
+                                class_count["None"] += 1
+                            else:
+                                class_count["None"] = 1
+
                         else:
-                            class_count[classes[index]] = 1
+                            index = int(index)
+                            if classes[index] in class_count.keys():
+                                class_count[classes[index]] += 1
+                            else:
+                                class_count[classes[index]] = 1
     return class_count
+
+
+
+def check_unique(test_path, train_path):
+    """A function to check that two datasets do not share any data"""
+    test_files = os.listdir(test_path)
+    train_files = os.listdir(train_path)
+    overlap = []
+
+    for test_file in test_files:
+        if test_file in train_files:
+            overlap.append(test_file)
+    
+    if len(overlap) == 0:
+        print("No overlap found!")
+        overlap = None
+    
+    return overlap
+
+
 
 def rename_label(dir_path, target, replace):
     """
@@ -278,8 +307,9 @@ def create_empty_labels(dir_path, label_type):
     
     print("Done!")
 
-pascal_dir = "L:\Code\labelled_img_test"
-yolo_dir = "L://Code//YOLOv4_detection//all_data//Vis//test"
-yolo_dir2 = "L://Code//YOLOv4_detection//all_data//IR//tmp"
-class_count = count_objects(yolo_dir2, label_format="yolo", class_file_path="L://Code//YOLOv4_detection//all_data//Vis//obj.names")
-print(class_count)
+pascal_dir = "L:\AddToTest"
+test_dir = "L:/v1_redo_test"
+train_dir = "L:/v1_redo_obj"
+#class_count = count_objects(pascal_dir, label_format="pascal_voc", class_file_path="L://Code//YOLOv4_detection//all_data//Vis//obj.names")
+#print(check_unique(test_dir, train_dir))
+pascal_voc_to_yolo(pascal_dir)

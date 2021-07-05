@@ -1,25 +1,17 @@
 import os
-from sys import path
 from typing import Tuple
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-import random
-from numpy.core.fromnumeric import resize
-from numpy.lib.function_base import append
 from scipy.interpolate import UnivariateSpline
+import glob
+import random
 from bs4 import BeautifulSoup
 import re
+import shutil
 
-class Label:
-    def __init__(self, class_name: str, min_coords: tuple, max_coords: tuple) -> None:
-        self.class_name = class_name
-        self.bbox = (min_coords, max_coords)
-
-        
-class Labelled_Img:  # todo: add ability to deal with alpha to preserve transparency for PNG images.
-    #  SO article: https://stackoverflow.com/questions/53380318/problem-about-background-transparent-png-format-opencv-with-python
+class Labelled_Img:
     """
     A class that reads in an image and its label in pascal voc format, applies various transformations and saves a new transformed image/labels in pascal voc or YOLO formet.
     """
@@ -29,6 +21,7 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         self._img_path = img_path
         self._label_path = label_path
         self._img = cv2.imread(img_path)
+        self._origimg = cv2.imread(img_path)
         self._labels = None
 
         if label_path is not None:
@@ -38,14 +31,15 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
 
             self._soup = BeautifulSoup(label_xml, "xml")
             for object in self._soup.findAll("object"):
-                name = object.find("name").string.strip()  # strips newline chars and spaces from start and end of names
+                name = object.find("name").string
                 x_min = int(object.find("xmin").string)
                 y_min = int(object.find("ymin").string)
                 x_max = int(object.find("xmax").string)
                 y_max = int(object.find("ymax").string)
 
-                #self._labels.append([name, (x_min, y_min), (x_max, y_max)])
-                self._labels.append(Label(name, (x_min, y_min), (x_max, y_max)))
+                self._labels.append([name, (x_min, y_min), (x_max, y_max)])
+        
+        self._origlabels = self._labels.copy()
 
     # getter methods
     def show(self, show_labels = True):
@@ -56,7 +50,7 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         else:
             labelled_img = copy.copy(self._img)
             for label in self._labels:
-                labelled_img = cv2.rectangle(labelled_img, label.bbox[0], label.bbox[1], thickness=2, color=(255,0,0))
+                labelled_img = cv2.rectangle(labelled_img, label[1], label[2], thickness=2, color=(0,0,255))
             
             cv2.imshow("labelled", labelled_img)
             cv2.waitKey(0)
@@ -69,10 +63,14 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
 
     def get_transformations(self):
         return self._transformations
-
     
+    def reset(self):
+        self._img = self._origimg
+        self._labels = self._origlabels
+        self._transformations = []
 
-    # image resizer (resized using bi-linear interpolation as this is the cv2 default.)
+
+    # image resizer
     def resize_img(self, target_width_px, target_height_px, resize_labels = True, transformation = True, discard_small = True, discard_threshold = 0.5):
         if transformation:
             self._transformations.append("resized")
@@ -109,17 +107,17 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
             label_min_y = img_height_px
 
             for label in self._labels:
-                if label.bbox[1][0] > label_max_x:
-                    label_max_x = label.bbox[1][0]
+                if label[2][0] > label_max_x:
+                    label_max_x = label[2][0]
                 
-                if label.bbox[0][0] < label_min_x:
-                    label_min_x = label.bbox[0][0]
+                if label[1][0] < label_min_x:
+                    label_min_x = label[1][0]
 
-                if label.bbox[1][1] > label_max_y:
-                    label_max_y = label.bbox[1][1]
+                if label[2][1] > label_max_y:
+                    label_max_y = label[2][1]
                 
-                if label.bbox[0][1] < label_min_y:
-                    label_min_y = label.bbox[0][1]
+                if label[1][1] < label_min_y:
+                    label_min_y = label[1][1]
 
             x_factor = target_width_px / (right - left)
             y_factor = target_height_px / (bottom - top)
@@ -146,24 +144,24 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
 
 
             for label in self._labels:
-                if discard_small:  # discards label if area of transformed bbox is less than discard_threshold * original bbox area
-                    orig_x1 = label.bbox[0][0]
-                    orig_x2 = label.bbox[1][0]
-                    orig_y1 = label.bbox[0][1]
-                    orig_y2 = label.bbox[1][1]
+                if discard_small:
+                    orig_x1 = label[1][0]
+                    orig_x2 = label[2][0]
+                    orig_y1 = label[1][1]
+                    orig_y2 = label[2][1]
 
-                if label.bbox[0][0] > left:
-                    label_x1 = label.bbox[0][0] - left
+                if label[1][0] > left:
+                    label_x1 = label[1][0] - left
                 else: 
                     label_x1 = 0
                 
-                if label.bbox[0][1] > top:
-                    label_y1 = label.bbox[0][1] - top
+                if label[1][1] > top:
+                    label_y1 = label[1][1] - top
                 else:
                     label_y1 = 0
 
-                label_x2 = label.bbox[1][0] - left
-                label_y2 = label.bbox[1][1] - top
+                label_x2 = label[2][0] - left
+                label_y2 = label[2][1] - top
                 
                 valid_label = all([True if item >= 0 else False for item in [label_x1, label_x2, label_y1, label_y2]])
                 
@@ -181,10 +179,10 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
                         if trans_label_area <= discard_threshold * orig_label_area:
                             pass
                         else:
-                            resized_labels.append(Label(class_name = label.class_name, min_coords = (label_x1, label_y1), max_coords = (label_x2, label_y2)))
+                            resized_labels.append([label[0], (label_x1, label_y1), (label_x2, label_y2)])
                     
                     else:
-                        resized_labels.append(Label(class_name = label.class_name, min_coords = (label_x1, label_y1), max_coords = (label_x2, label_y2)))
+                        resized_labels.append([label[0], (label_x1, label_y1), (label_x2, label_y2)])
 
             self._labels = resized_labels
         
@@ -214,13 +212,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
             reflected = []
             img_y, img_x = np.shape(self._img)[:2]
             for label in self._labels:
-                name = label.class_name
-                x_max = img_x - label.bbox[0][0] 
-                x_min = img_x - label.bbox[1][0]
-                y_max = label.bbox[1][1]
-                y_min = label.bbox[0][1]
+                name = label[0]
+                x_max = img_x - label[1][0]
+                x_min = img_x - label[2][0]
+                y_max = label[2][1]
+                y_min = label[1][1]
 
-                reflected.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
+                reflected.append([name, (x_min, y_min), (x_max, y_max)])
             self._labels = reflected
         return self
 
@@ -234,13 +232,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
             reflected = []
             img_y, img_x = np.shape(self._img)[:2]
             for label in self._labels:
-                name = label.class_name 
-                x_max = label.bbox[1][0]
-                x_min = label.bbox[0][0]
-                y_max = img_y - label.bbox[0][1]
-                y_min = img_y - label.bbox[1][1]
+                name = label[0]
+                x_max = label[2][0]
+                x_min = label[1][0]
+                y_max = img_y - label[1][1]
+                y_min = img_y - label[2][1]
 
-                reflected.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
+                reflected.append([name, (x_min, y_min), (x_max, y_max)])
             self._labels = reflected
         return self
 
@@ -255,13 +253,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
             rotated = []
 
             for label in self._labels:
-                name = label.class_name
-                x_min = img_x - label.bbox[1][1]
-                x_max = img_x - label.bbox[0][1]
-                y_max = label.bbox[1][0]
-                y_min = label.bbox[0][0]
+                name = label[0]
+                x_min = img_x - label[2][1]
+                x_max = img_x - label[1][1]
+                y_max = label[2][0]
+                y_min = label[1][0]
 
-                rotated.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
+                rotated.append([name, (x_min, y_min), (x_max, y_max)])
             self._labels = rotated
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -278,13 +276,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         if self._labels is not None:
             rotated = []
             for label in self._labels:
-                name = label.class_name 
-                x_min = img_x - label.bbox[1][0]
-                x_max = img_x - label.bbox[0][0]
-                y_max = img_y - label.bbox[0][1]
-                y_min = img_y - label.bbox[1][1]
+                name = label[0]
+                x_min = img_x - label[2][0]
+                x_max = img_x - label[1][0]
+                y_max = img_y - label[1][1]
+                y_min = img_y - label[2][1]
 
-                rotated.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
+                rotated.append([name, (x_min, y_min), (x_max, y_max)])
             self._labels = rotated
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -301,13 +299,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         if self._labels is not None:
             rotated = []
             for label in self._labels:
-                name = label.class_name
-                x_min = label.bbox[0][1]
-                x_max = label.bbox[1][1]
-                y_max = img_y - label.bbox[0][0]
-                y_min = img_y - label.bbox[1][0]
+                name = label[0]
+                x_min = label[1][1]
+                x_max = label[2][1]
+                y_max = img_y - label[1][0]
+                y_min = img_y - label[2][0]
 
-                rotated.append(Label(class_name = name, min_coords = (x_min, y_min), max_coords = (x_max, y_max)))
+                rotated.append([name, (x_min, y_min), (x_max, y_max)])
             self._labels = rotated
             self.resize_img(img_x, img_y, transformation=False)
         
@@ -326,7 +324,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         stretch[axis] = coord[axis] * factor
         return (int(stretch[0]), int(stretch[1]))
 
-    def stretch_x(self, factor):
+    def stretch_x(self, factor = None):
+        if factor == None:
+            factor = np.random.normal(1,0.2)
+            while np.abs(factor) < 0.05:
+                factor = np.random.normal(1,0.2)
+        factor = np.abs(factor)
+        
         self._transformations.append(f"stretchX-{round(factor, 3)}")
         img_y, img_x = np.shape(self._img)[:2]
         midpoint = (img_x / 2, img_y / 2)
@@ -336,11 +340,9 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         if self._labels is not None:
             stretched = []
             for label in self._labels:
-                name = label.class_name
-                stretched.append(Label(class_name = name, 
-                                        min_coords = self.__stretch_coordinate(label.bbox[0], midpoint, factor, axis = 0), 
-                                        max_coords = self.__stretch_coordinate(label.bbox[1], midpoint, factor, axis = 0)))
-
+                name = label[0]
+                stretched.append([name, self.__stretch_coordinate(label[1], midpoint, factor, axis = 0),
+                                 self.__stretch_coordinate(label[2], midpoint, factor, axis = 0)])
             self._labels = stretched
             self.resize_img(img_x, img_y, transformation=False)
 
@@ -348,7 +350,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
             self.resize_img(img_x, img_y, resize_labels=False, transformation=False)
         return self
 
-    def stretch_y(self, factor):
+    def stretch_y(self, factor = None):
+        if factor == None:
+            factor = np.random.normal(1,0.2)
+            while np.abs(factor) < 0.05:
+                factor = np.random.normal(1,0.2)
+        factor = np.abs(factor)
+        
         self._transformations.append(f"stretchY-{round(factor, 3)}")
         img_y, img_x = np.shape(self._img)[:2]
         midpoint = (img_x / 2, img_y / 2)
@@ -358,43 +366,26 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         if self._labels is not None:
             stretched = []
             for label in self._labels:
-                name = label.class_name
-                stretched.append(Label(class_name = name, 
-                                        min_coords = self.__stretch_coordinate(label.bbox[0], midpoint, factor, axis = 1),
-                                        max_coords = self.__stretch_coordinate(label.bbox[1], midpoint, factor, axis = 1)))
-
+                name = label[0]
+                stretched.append([name, self.__stretch_coordinate(label[1], midpoint, factor, axis = 1),
+                                 self.__stretch_coordinate(label[2], midpoint, factor, axis = 1)])
             self._labels = stretched
             self.resize_img(img_x, img_y, transformation=False)
         
         else:
             self.resize_img(img_x, img_y, resize_labels=False, transformation=False)
         return self
-
-    def downscale(self, factor, mode="smooth"):
-        self._transformations.append(f"downscale-{factor}")
-        img_height_px, img_width_px = np.shape(self._img)[:2]  # [:2] is to disregard colour channels dimension to only get dimensions of image
-        img_aspect_ratio = img_width_px / img_height_px
-        resize_w = int(round(img_width_px * factor))
-        resize_h = int(round(img_height_px * factor))
-
-        if mode == "smooth":
-            self.resize_img(resize_w, resize_h, transformation=False)  # downscales image by factor
-            self.resize_img(img_width_px, img_height_px, transformation=False)  # returns image back to original size
-
-        elif mode == "pix":
-            # Resize input to "pixelated" size
-            self._img = cv2.resize(self._img, (resize_w, resize_h), interpolation=cv2.INTER_LINEAR)
-            # Initialize output image
-            self._img = cv2.resize(self._img, (img_width_px, img_height_px), interpolation=cv2.INTER_NEAREST)
-
-        return self
-
+    
+    
     # colour effects
     def __spreadLookupTable(self, x, y):
         spline = UnivariateSpline(x, y)
         return spline(range(256))
   
-    def warm_image(self, strength, graph = False):
+    def warm_image(self, strength = None, graph = False):
+        if strength == None:
+            strength = np.random.rand()
+        
         if strength >= 0 and abs(strength) <= 1:
             self._transformations.append(f"warm-{round(strength, 3)}")
             increase_x_points = [0, 64, 128, 192, 224, 255]
@@ -428,11 +419,13 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
                 plt.show()
 
             self._img = cv2.merge((blue_channel, green_channel, red_channel)) 
+            return self
         else:
             print("strength ratio must be a decimal value between 0-1")
-        return self
 
-    def cool_image(self, strength, graph = False):
+    def cool_image(self, strength = None, graph = False):
+        if strength == None:
+            strength = np.random.rand()
         if strength >= 0 and abs(strength) <= 1:
             self._transformations.append(f"cool-{round(strength, 3)}")
             increase_x_points = [0, 64, 128, 192, 224, 255]
@@ -466,19 +459,11 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
                 plt.show()
     
             self._img = cv2.merge((blue_channel, green_channel, red_channel))  
+            return self
         else:
             print("strength ratio must be a decimal value between 0-1")
-        return self
-
-    def greyscale(self):
-        self._transformations.append("greyscale")
-        self._img = cv2.cvtColor(self._img, cv2.COLOR_BGR2GRAY)
-        return self
-
-
-    
-    #overlays
-    def rand_overlay(self, overlay_path = None):
+            
+    def rand_overlay(self, graph = False):
         overlays = os.listdir('Overlays')
         overlay_imgpath = os.path.join('Overlays',overlays[np.random.randint(0,len(overlays))])
         overlay_img = cv2.imread(overlay_imgpath)
@@ -494,22 +479,54 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
         Q = 1-P
         self._img = cv2.addWeighted(self._img,P,overlay_crop,Q,0)
         return self
-
-
-
-    #random method
-    def random_transform(self):
-        if random.randint(0, 100) > 30:
+        
+    def rand_trans(self,transforms = None, probs = None):#,self.rot_90,self.rot_270,self.stretch_y,self.stretch_x]):
+        
+        if transforms == None:
+            transforms = [self.rand_overlay,self.cool_image,self.warm_image,self.rot_180,self.reflect_x,self.reflect_y,self.stretch_y,self.stretch_x]#,self.rot_90,self.rot_270]
+        if probs == None:
+            # probs = [0.28,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08,0.08]
+            probs = [0.3,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+        
+        transformtype = np.random.choice(a=transforms,p=probs)
+        transformtype()
+        return self
+    
+    def rand_colour(self):
+        
+        if np.random.rand() >= 0.5:
+            self.cool_image()
+        else:
+            self.warm_image()
+        return self
+    
+    def rand_rot(self):
+        rotchoice = np.random.rand()
+        refchoice = np.random.rand()
+        if rotchoice >= 0.75:
+            self.rot_180()
+        elif rotchoice >= 0.5:
+            # self.rot_90()
+            None
+        elif rotchoice >= 0.25:
+            # self.rot_270()
+            None
+            
+        if refchoice >= 0.7:
             self.reflect_x()
-
-        if random.randint(0, 100) > 30:
-            self.rot_90()
-
-        if random.randint(0, 100) > 30:
-            self.warm_image(random.randint(0, 100)/100)
-
-
-
+        elif refchoice >= 0.4:
+            self.reflect_y()
+        else:
+            None
+        return self
+    
+    def rand_scale(self):
+        if np.random.rand() >= 0.5:
+            self.stretch_x()
+        else:
+            self.stretch_y()
+        return self
+    
     #output methods
     def save(self, custom_name = None, savedir = None):
         """
@@ -552,11 +569,11 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
             objects = self._soup.findAll("object")
             #setting object tags
             for i, label in enumerate(self._labels):
-                objects[i].find("name").string = label.class_name
-                objects[i].find("xmin").string = str(label.bbox[0][0])
-                objects[i].find("ymin").string = str(label.bbox[0][1])
-                objects[i].find("xmax").string = str(label.bbox[1][0])
-                objects[i].find("ymax").string = str(label.bbox[1][1])
+                objects[i].find("name").string = label[0]
+                objects[i].find("xmin").string = str(label[1][0])
+                objects[i].find("ymin").string = str(label[1][1])
+                objects[i].find("xmax").string = str(label[2][0])
+                objects[i].find("ymax").string = str(label[2][1])
 
             for j, object in enumerate(objects):
                 if j > i:
@@ -566,3 +583,97 @@ class Labelled_Img:  # todo: add ability to deal with alpha to preserve transpar
                 fp.write(re.sub(r".*\n", "", self._soup.prettify(), 1))
                 fp.seek(0,2)
                 fp.write("\n" + f"<!--{transform_string[1:]}-->")
+            
+                
+        
+        
+#%% 
+   
+def show_labelled(outputs):
+    labelled_imgs = []
+    for img in outputs:
+        
+        labelled_img = copy.copy(img._img)
+        for label in img._labels:
+            labelled_img = cv2.rectangle(labelled_img, label[1], label[2], thickness=2, color=(0,0,255))
+        labelled_imgs.append(labelled_img)
+    concat = cv2.hconcat(labelled_imgs)
+    cv2.imshow('output',concat)
+    
+def rand_chain(img_path,label_path,num_outputs = 6, num_passes = 1, show = False, debug = False):
+        
+    orig = Labelled_Img(img_path,label_path)
+    outputs = [orig]
+    
+    # overlayed = False
+    
+    for output in range(num_outputs):
+        image = Labelled_Img(img_path,label_path)
+        # num_passes = np.abs(int(np.random.normal(num_transforms,0.5)))
+        transformtypes = [image.rand_rot,image.rand_colour,image.rand_overlay,image.rand_scale]
+        random.shuffle(transformtypes)
+
+        for transform in range(num_passes):
+            transformtypes[0]()
+            transformtypes[1]()
+            transformtypes[2]()
+            transformtypes[3]()
+        if debug:
+            print(image._transformations,'\n')
+            
+        outputs.append(image) # save image
+        
+        if show:
+            # for i in range(len(outputs)):
+                # cv2.imshow('window{}'.format(i),outputs[i]._img)
+            show_labelled(outputs)
+
+    return outputs
+        
+        
+def rand_folder(folder_path = None,file_type = '.jpg', num_outputs = 6, num_passes = 1, debug = False):
+    '''This is a supervised randomisation process which waits for confirmation'''
+    if folder_path is not None:
+        # print(folder_path + '/*' + file_type)
+        load_folder = folder_path + ' (Unprocessed Originals)'
+        if not os.path.exists(load_folder):
+            shutil.copytree(folder_path, load_folder)
+        save_folder = folder_path + ' (Processed Transformed)'
+        if not os.path.exists(save_folder):
+            os.mkdir(save_folder)
+        move_folder = folder_path + ' (Processed Originals)'
+        if not os.path.exists(move_folder):
+            os.mkdir(move_folder)
+        problem_folder = folder_path + ' (Problematic Originals)'
+        if not os.path.exists(problem_folder):
+            os.mkdir(problem_folder)
+            
+        file_paths = load_folder + '/*' + file_type
+        
+        print('Starting. Filepath:\n')
+        print(file_paths+'\n')  
+        
+        for file_name in glob.glob(file_paths):
+            print(file_name+'\n')
+            xml_path = file_name[:-len(file_type)] + '.xml'
+            confirmed = False
+            while not confirmed:
+                
+                img_set = rand_chain(file_name, xml_path, num_outputs = num_outputs, num_passes = num_passes,debug = debug)
+                
+                show_labelled(img_set)
+                if cv2.waitKey(0) & 0xFF == ord('y'):
+                    for i in range(len(img_set)):
+                        img_set[i].save(custom_name = '_v{}'.format(i+1), savedir=save_folder)
+                    shutil.move(file_name, move_folder)
+                    shutil.move(xml_path, move_folder)
+                    confirmed = True
+                elif cv2.waitKey(0) & 0xFF == ord('r'):
+                    None
+                elif cv2.waitKey(0) & 0xFF == ord('n'):
+                    confirmed = True
+                    shutil.move(file_name, problem_folder)
+                    shutil.move(xml_path, problem_folder)
+                
+        
+        
