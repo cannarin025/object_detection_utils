@@ -28,8 +28,7 @@ class TabMenu(QtWidgets.QTabWidget):
     
     def add_tab(self, tab_name = None):
         if tab_name is None:
-            #tab_name = f"tab{self.count() + 1}" # generates tab name if one is not assigned.
-
+            
             # assigns first available tab name if one is not assigned
             tab_numbers = [int(x.tab_name[3:]) for x in self.tab_list if re.match(r"tab\d+", x.tab_name)]
             first_free_num = 1
@@ -37,12 +36,6 @@ class TabMenu(QtWidgets.QTabWidget):
                 first_free_num += 1
             
             tab_name = f"tab{first_free_num}"
-                
-            #prev_count = re.findall("\([0-9]*\)")
-            #tab = Tab(tab_name)
-            #print(existing_tab.)
-            #print(existing_tab.tab_name)
-            pass
 
         tab = Tab(tab_name)
         self.addTab(tab, tab_name)
