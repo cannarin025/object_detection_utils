@@ -3,8 +3,9 @@ from PyQt5.QtCore import Qt
 import re
 
 class Tab(QtWidgets.QWidget):
-
-    custom_name: bool
+    """
+    Tab baseclass for use with TabMenu
+    """
 
     def __init__(self, tab_name: str = None):
         super().__init__()
