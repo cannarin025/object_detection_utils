@@ -2,6 +2,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from widgets.TabMenu import TabMenu
 from widgets.img_tab_menu import ImgTabMenu
 from widgets.menu_bar import MenuBar
+from src.classes.filemanager import FileManager
 import os
 import sys
 
@@ -11,6 +12,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setObjectName("MainWindow")
         self.resize(1248, 600)
         
+        #self.filemanager = FileManager()
+
         self.menu_bar = MenuBar()
         self.setMenuBar(self.menu_bar)
 

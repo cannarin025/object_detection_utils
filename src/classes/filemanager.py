@@ -7,10 +7,13 @@ from typing import Dict, List
         
 
 class FileManager():
+    """
+    root_dir: path to the root folder of the dataset
+    filepaths: A list of separate images not contained within the root dir
+    """
 
-    dir_opened: bool = False
-    dirpath: str = None # the directory currently opened
+    root_dir: str = None # path to the dataset directory
     filepaths: List[str] # list of separate, "non-dir files"
 
-    def __init__(self) -> None:
-        pass
+    def set_root_dir(self, new_dir_path):
+        self.rootdirpath = new_dir_path
