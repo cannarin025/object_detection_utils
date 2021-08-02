@@ -1,12 +1,11 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from widgets.TabMenu import TabMenu
 from widgets.img_tab_menu import ImgTabMenu
-from widgets.TabMenuTest import CustomTabWidget
 from widgets.menu_bar import MenuBar
 import os
 import sys
 
-class TestWindow(QtWidgets.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setObjectName("MainWindow")
@@ -35,5 +34,5 @@ class TestWindow(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    window = TestWindow()
+    window = MainWindow()
     sys.exit(app.exec_())
