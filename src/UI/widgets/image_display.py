@@ -4,8 +4,10 @@ from PyQt5.QtCore import Qt
 
 import cv2
 import os
+import sys
 
-os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+if sys.platform == "linux":
+    os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 class ImgDisplayWidget(QtWidgets.QWidget):
 
