@@ -3,8 +3,7 @@ from PyQt5.QtCore import Qt
 from typing import List
 import re
 
-from widgets.tab import Tab
-from widgets.image_display import ImgDisplayWidget
+from src.ui.widgets.image_display import ImgDisplayWidget
 
 class ImgTabMenu(QtWidgets.QTabWidget):
 
@@ -49,6 +48,9 @@ class ImgTabMenu(QtWidgets.QTabWidget):
         if self.count() == 0:
             welcome_tab = QtWidgets.QWidget()  # create a welcome tab to default to if no other tabs exist with contents that serve as instructions
             self.addTab(welcome_tab, "Welcome!")
+
+    def get_current_tab(self):
+        return self.widget(self.currentIndex())
 
     def set_tab_name(self): # unnecessary
         self.setTabText(self.currentIndex(), "test")

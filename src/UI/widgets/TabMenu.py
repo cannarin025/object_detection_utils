@@ -3,7 +3,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 import re
 
-from widgets.tab import Tab
+from src.ui.widgets.tab import Tab
 
 class TabMenu(QtWidgets.QTabWidget):
 #class TabMenu(QtWidgets.QTabBar):

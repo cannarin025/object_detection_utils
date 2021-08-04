@@ -11,6 +11,8 @@ if sys.platform == "linux":
 
 class ImgDisplayWidget(QtWidgets.QWidget):
 
+    img_index: int = 0
+
     def __init__(self):
         super(ImgDisplayWidget, self).__init__()
         
