@@ -56,8 +56,8 @@ class MenuBar(QtWidgets.QMenuBar):
             self.filemanager.filepaths = [x for x in os.listdir(dirpath) if x.endswith((".jpg", ".png"))]
 
             if isinstance(self.img_tab_menu.widget(self.img_tab_menu.currentIndex()), ImgDisplayWidget):
-               current_tab = self.img_tab_menu.widget(self.img_tab_menu.currentIndex())
-               current_tab.set_img(cv2.imread(dirpath + "/" + self.filemanager.filepaths[self.img_tab_menu.get_current_tab().img_index]))
+                current_tab = self.img_tab_menu.widget(self.img_tab_menu.currentIndex())
+                current_tab.set_img(cv2.imread(dirpath + "/" + self.filemanager.filepaths[self.img_tab_menu.get_current_tab().img_index]))
 
         else:
            # add img_display tab first and then display image
