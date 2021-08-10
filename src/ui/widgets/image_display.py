@@ -19,8 +19,11 @@ class ImgDisplayWidget(QtWidgets.QWidget):
         #self.container = QtWidgets.QFrame()
         self.layout = QtWidgets.QVBoxLayout()
         self.button = QtWidgets.QPushButton("test")
+
         self.display = QtWidgets.QLabel()
         self.display.setScaledContents(False)
+        self.display.mouseDoubleClickEvent = self.getPos
+
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setWidget(self.display)
@@ -36,3 +39,8 @@ class ImgDisplayWidget(QtWidgets.QWidget):
         img = img.scaled(2000, 2000, Qt.KeepAspectRatio)
         #self.display.resize(img.width(), img.height())
         self.display.setPixmap(QtGui.QPixmap.fromImage(img))
+
+    def getPos(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
+        print("img coords x:", x, "y:", y)
