@@ -20,7 +20,11 @@ class ImgDisplayWidget(QtWidgets.QWidget):
         self.layout = QtWidgets.QVBoxLayout()
         self.button = QtWidgets.QPushButton("test")
         self.display = QtWidgets.QLabel()
-        self.layout.addWidget(self.display)
+        self.display.setScaledContents(False)
+        self.scroll = QtWidgets.QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.display)
+        self.layout.addWidget(self.scroll)
         self.layout.addWidget(self.button)
         self.setLayout(self.layout)
 

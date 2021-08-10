@@ -14,3 +14,8 @@ class FileManager():
 
     def __init__(self) -> None:
         pass
+
+    def open_dir(self, dirpath):
+        self.dirpath = dirpath
+        self.filepaths = [x for x in os.listdir(dirpath) if x.endswith((".jpg", ".png"))]
+
