@@ -1,9 +1,8 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from typing import List
+from PyQt5 import QtWidgets
 import re
 
-from src.ui.widgets.image_display import ImgDisplayWidget
+from src.ui.widgets.image_display import ImgDisplay
+from src.ui.widgets.image_tab import ImgTab
 
 class ImgTabMenu(QtWidgets.QTabWidget):
 
@@ -35,7 +34,7 @@ class ImgTabMenu(QtWidgets.QTabWidget):
             
             tab_name = f"tab{first_free_num}"
 
-        tab = ImgDisplayWidget()
+        tab = ImgTab()
         self.addTab(tab, tab_name)
 
     def remove_tab(self, index):
